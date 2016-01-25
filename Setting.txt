@@ -1,0 +1,5 @@
+"templateFilePath","testFilePath"
+"C:\Users\ctsai\Desktop\PythonAutoTest\AutoTestBTPRNCoding\Template1","C:\Users\ctsai\Desktop\PythonAutoTest\AutoTestBTPRNCoding\Target1"
+"C:\Users\ctsai\Desktop\PythonAutoTest\AutoTestBTPRNCoding\TemplateForComparing",""
+"abc","efg"
+"","C:\Users\ctsai\Desktop\PythonAutoTest\"

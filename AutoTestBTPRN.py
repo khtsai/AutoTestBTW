@@ -43,26 +43,37 @@ def logFormatting(matchType, lineText, resultText):
 def cmpPRN(templateFilePath, testFilePath, logFilePath):
     #check two .prn files
         try:
-            with open(templateFilePath, 'r', encoding='utf-8') as templateFile,\
-                 open(testFilePath, 'r', encoding='utf-8') as testFile:
+            with open(templateFilePath, 'r', encoding='utf-8', errors="replace") as templateFile,\
+                 open(testFilePath, 'r', encoding='utf-8', errors="replace") as testFile:
+                #diff = difflib.ndiff(templateFile.readlines(),testFile.readlines())
                 diff = difflib.ndiff(templateFile.readlines(),testFile.readlines())
 
                 #index, addForMatchLine, addForOldFileLine, addForNewFileLine, checkMismatchORMissing
-                misNum,curLineNum,oldLineNum,newLineNum,flag,flagCaret = 0,0,0,0,0,0
+                misNum,curLineNum,oldLineNum,newLineNum,flag,flagCaret, missBothFlag = 0,0,0,0,0,0,0
                 #initial a space for saving each line of the files
                 tempList=[]
                 
                 for line in diff:
                     #match
                     if line.startswith(' '):
+                        missBothFlag = 0
                         curLineNum += 1
                         #sys.stdout.write("Old File, line: {}, text: {}"\
                         #                .format(curLineNum+oldLineNum,line))
-
+##                    elif line.startswith('-'):
+##                        tempList.append(line)
+##                    elif line.startswith('+'):
+##                        tempList.append(line)
+##                    elif line.startswith('?'):
+##                        tempList.append(line)
+##                    else:
+##                        tempList.append("startswith('else')")
+                                        
                     # Mismatch occurs in the old file
                     elif line.startswith('-'):
                         oldLineNum += 1
                         misNum += 1
+                        missBothFlag = 0
                         lineText = "{}. At line {} in old file, text: ".format(misNum, curLineNum+oldLineNum)                              
                         tempList.append(logFormatting('-',lineText,line))
                         tempList.append(logFormatting('',"{}. Missing text in new file: ".format(misNum),\
@@ -71,20 +82,30 @@ def cmpPRN(templateFilePath, testFilePath, logFilePath):
                     elif line.startswith('+'):
                         newLineNum += 1
                         misNum +=1
+                        missBothFlag = 0
                         lineText = "{}. At line {} in new file, text: ".format(misNum, curLineNum+newLineNum)
                         tempList.append(logFormatting('+',lineText,line))
                         
                         #if flag equals 1, it means mismatching instead of missing text, so no need to add missing text message
                         if flag == 1:
                             flag = 0
-                            tempList.append(tempList.pop()+"\n")
+                            #-?+? token
+                            missBothFlag = 1                            
+                            tempList.append("\r\n")
                         else:
+                            #tempList.append(logFormatting('+',lineText,line))
                             tempList.append(logFormatting('',"{}. Missing text in old file: ".format(misNum),\
-                                                      " {}...\n\n".format("^"*(len(line)-2))
+                                                      " {}...\r\n\r\n".format("^"*(len(line)-2))
                                                                           ))                           
                     elif line.startswith('?'):
+                        if missBothFlag == 1:
+                            tempList.pop()
+                            lineText = "{}. Mismatching text: ".format(misNum)
+                            tempList.append(logFormatting('?',lineText,line)+"\r\n")
+                            missBothFlag = 0
+                            
                         # + means there are something more in the new file
-                        if "+" in line:
+                        elif "+" in line:
                             misNum -= 1
                             lineText = "{}. Mismatching text: ".format(misNum)
                             
@@ -104,13 +125,10 @@ def cmpPRN(templateFilePath, testFilePath, logFilePath):
                         # - means there are something more in the old file
                         # ^ mismatch b/w the old and new file
                         else:
-                            if (flagCaret == 0):
                                 # to avoid logging Missing text in new file as it is mismatching
                                 flag = 1
                                 # to avoid logging ? with ^ duplicate
                                 # the duplicate will occur on the new file
-                                if "^" in line:
-                                    flagCaret = 1
                                     
                                 lineText = "{}. Mismatching text: ".format(misNum)
                                 
@@ -120,20 +138,38 @@ def cmpPRN(templateFilePath, testFilePath, logFilePath):
                                 
                                 # reduce misNum as +'s misNum will be added extra ONE
                                 misNum -= 1
-                            else:
-                                flagCaret = 0
+
+##                        elif "-" in line:
+##                            if (flagCaret == 0):
+##                                # to avoid logging Missing text in new file as it is mismatching
+##                                flag = 1
+##                                # to avoid logging ? with ^ duplicate
+##                                # the duplicate will occur on the new file
+##                                if "^" in line:
+##                                    flagCaret = 1
+##                                    
+##                                lineText = "{}. Mismatching text: ".format(misNum)
+##                                
+##                                # pop out a reduntent Missing text in old fIle
+##                                tempList.pop()
+##                                tempList.append(logFormatting('?',lineText,line))
+##                                
+##                                # reduce misNum as +'s misNum will be added extra ONE
+##                                misNum -= 1
+##                            else:
+##                                flagCaret = 0
                         
             if(len(tempList) > 0):
                 tempList.append("***Match Failed!!***\r\n\r\n")
                 logDiff(tempList)
-                logToCSV(templateFilePath, testFilePath, "Match Failed")
+                #logToCSV(templateFilePath, testFilePath, "Match Failed")
                 if (os.path.isfile(testFilePath)):
                     renamedtestFilePath = os.path.join(os.path.dirname(testFilePath),\
                                                            "[ERROR]"+os.path.basename(testFilePath))
                     os.rename(testFilePath, renamedtestFilePath)
             else:
                 logDiff("***Match Passed!!***\r\n\r\n")
-                logToCSV(templateFilePath, testFilePath, "Match Passed")
+                #logToCSV(templateFilePath, testFilePath, "Match Passed")
                 
         except Exception as e:
                     logSysInfo("Exception error({0}): {1} at cmpPRN".format(e.errno, e.strerror))
